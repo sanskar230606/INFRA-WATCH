@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { TrendingUp, AlertCircle, CheckCircle2, Info } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { AlertCircle, CheckCircle2, TrendingUp } from "lucide-react";
 
 export const BudgetTimeChart = ({ project }) => {
-  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const [hoverData, setHoverData] = useState(null);
+  const svgRef = useRef(null);
 
   if (!project) return null;
 
@@ -15,9 +16,8 @@ export const BudgetTimeChart = ({ project }) => {
   const anticipatedDate = new Date(project.anticipatedCompletionDate || "2027-12-31");
   const originalDate = new Date(project.originalCompletionDate || "2025-12-31");
   
-  // Approximate start date (typically 2-4 years before original target, or derived)
-  const delayMonths = project.timeDelayMonths || 0;
-  const originalDurationMonths = 36; // 3-year baseline standard central sector cycle
+  // Approximate start date (3-year baseline standard central sector cycle)
+  const originalDurationMonths = 36;
   const startDate = new Date(originalDate);
   startDate.setMonth(startDate.getMonth() - originalDurationMonths);
 
@@ -33,23 +33,22 @@ export const BudgetTimeChart = ({ project }) => {
     ? +((actualExpenditure / revisedCost) * 100).toFixed(1) 
     : 0;
 
-  // Ideal planned spending at current timeline position (S-curve approximation)
   // S-Curve: y = 3x^2 - 2x^3
   const sCurveRatio = 3 * Math.pow(timelineProgressRatio, 2) - 2 * Math.pow(timelineProgressRatio, 3);
   const plannedSpendingAtCurrentTime = +(revisedCost * sCurveRatio).toFixed(1);
 
   // Over-budget vs Under-budget determination:
-  // Compare Actual cumulative expenditure with Ideal planned expenditure at the same point in time
+  // Compare Actual cumulative expenditure with Ideal planned expenditure at current elapsed time
   const isOverBudget = actualExpenditure > plannedSpendingAtCurrentTime;
   const varianceAmount = Math.abs(actualExpenditure - plannedSpendingAtCurrentTime).toFixed(1);
   const variancePercent = plannedSpendingAtCurrentTime > 0
     ? Math.abs(((actualExpenditure - plannedSpendingAtCurrentTime) / plannedSpendingAtCurrentTime) * 100).toFixed(1)
     : 0;
 
-  // SVG Coordinate space: 600 width x 280 height
-  const width = 600;
-  const height = 280;
-  const padding = { top: 30, right: 40, bottom: 45, left: 65 };
+  // Compact, scaled-down SVG Coordinate space: 580 width x 210 height
+  const width = 580;
+  const height = 210;
+  const padding = { top: 22, right: 30, bottom: 34, left: 58 };
   const graphWidth = width - padding.left - padding.right;
   const graphHeight = height - padding.top - padding.bottom;
 
@@ -60,7 +59,7 @@ export const BudgetTimeChart = ({ project }) => {
 
   // Generate Ideal Planned Path (Smooth S-curve)
   const idealPoints = [];
-  const numSteps = 20;
+  const numSteps = 24;
   for (let i = 0; i <= numSteps; i++) {
     const r = i / numSteps;
     const curveR = 3 * Math.pow(r, 2) - 2 * Math.pow(r, 3);
@@ -77,196 +76,243 @@ export const BudgetTimeChart = ({ project }) => {
 
   // Generate Actual Path from Start to Current Point
   const actualPoints = [];
-  const actualSteps = 10;
+  const actualSteps = 12;
   for (let i = 0; i <= actualSteps; i++) {
     const subRatio = (i / actualSteps) * timelineProgressRatio;
-    // Expenditure curve rising towards actualExpenditure
-    const subCurve = Math.pow(i / actualSteps, 1.4);
+    const subCurve = Math.pow(i / actualSteps, 1.35);
     const val = actualExpenditure * subCurve;
     actualPoints.push({ x: getX(subRatio), y: getY(val) });
   }
   const actualPathD = actualPoints.reduce((acc, pt, idx) => `${acc} ${idx === 0 ? "M" : "L"} ${pt.x} ${pt.y}`, "");
 
-  // Key Milestones for tooltips & ticks
-  const chartPoints = [
-    {
-      label: "Project Inception",
-      date: startDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
-      planned: 0,
-      actual: 0,
-      ratio: 0,
-      cx: getX(0),
-      cy: getY(0)
-    },
-    {
-      label: "Current Status",
-      date: currentDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
-      planned: plannedSpendingAtCurrentTime,
-      actual: actualExpenditure,
-      ratio: timelineProgressRatio,
-      cx: actualPoint.x,
-      cy: actualPoint.y,
-      isCurrent: true
-    },
-    {
-      label: "Original Target",
-      date: originalDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
-      planned: originalCost,
-      actual: null,
-      ratio: Math.min(0.9, (originalDate.getTime() - startDate.getTime()) / totalTimelineMs),
-      cx: getX(Math.min(0.9, (originalDate.getTime() - startDate.getTime()) / totalTimelineMs)),
-      cy: getY(originalCost)
-    },
-    {
-      label: "Anticipated Completion",
-      date: anticipatedDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
-      planned: revisedCost,
-      actual: null,
-      ratio: 1,
-      cx: getX(1),
-      cy: getY(revisedCost)
+  // Handle Interactive Mouse Movement directly on the Graph Canvas
+  const handleMouseMove = (e) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const clientX = e.clientX - rect.left;
+    const clientY = e.clientY - rect.top;
+
+    // Convert to SVG coordinate system
+    const svgX = (clientX / rect.width) * width;
+    
+    // Clamp to graph area
+    if (svgX < padding.left || svgX > width - padding.right) {
+      setHoverData(null);
+      return;
     }
-  ];
+
+    const ratio = Math.max(0, Math.min(1, (svgX - padding.left) / graphWidth));
+    const targetMs = startDate.getTime() + ratio * totalTimelineMs;
+    const targetDate = new Date(targetMs);
+    const dateStr = targetDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+
+    // Planned spending at this ratio
+    const sVal = 3 * Math.pow(ratio, 2) - 2 * Math.pow(ratio, 3);
+    const plannedVal = +(revisedCost * sVal).toFixed(1);
+
+    // Actual spending at this ratio (only if <= timeline progress)
+    let actualVal = null;
+    let pointVariance = null;
+    let isPointOver = false;
+
+    if (ratio <= timelineProgressRatio) {
+      const actualSubRatio = ratio / timelineProgressRatio;
+      actualVal = +(actualExpenditure * Math.pow(actualSubRatio, 1.35)).toFixed(1);
+      pointVariance = +(actualVal - plannedVal).toFixed(1);
+      isPointOver = actualVal > plannedVal;
+    }
+
+    setHoverData({
+      svgX,
+      svgYPlanned: getY(plannedVal),
+      svgYActual: actualVal !== null ? getY(actualVal) : null,
+      ratio,
+      percent: Math.round(ratio * 100),
+      dateStr,
+      plannedVal,
+      actualVal,
+      pointVariance,
+      isPointOver,
+      isFuture: ratio > timelineProgressRatio,
+      clientXPercent: (clientX / rect.width) * 100,
+      clientYPercent: (clientY / rect.height) * 100
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setHoverData(null);
+  };
 
   return (
-    <div className="budget-chart-container" role="region" aria-label="Budget vs Time Chart">
+    <div className="budget-time-chart-card compact-chart" role="region" aria-label="Budget vs Time Chart">
       {/* Header with Title & Dynamic Status Badge */}
-      <div className="chart-header">
-        <div>
-          <h3 className="chart-title">Budget vs Time (Planned vs Actual Expenditure)</h3>
-          <p className="chart-subtitle">
-            Cumulative financial progression against planned project baseline
+      <div className="chart-card-header">
+        <div className="chart-title-group">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <TrendingUp size={16} className="chart-icon-tint" aria-hidden="true" />
+            <h3 className="chart-card-title">Budget vs Time (Planned vs Actual S-Curve)</h3>
+          </div>
+          <p className="chart-card-desc">
+            Cumulative financial deployment across sanction timeline (₹ Cr)
           </p>
         </div>
 
         {/* OVER-BUDGET / WITHIN-TRAJECTORY BADGE */}
-        <div className={`budget-status-pill ${isOverBudget ? "over-budget" : "within-trajectory"}`}>
+        <div className={`budget-verdict-badge ${isOverBudget ? "over-budget" : "under-budget"}`}>
           {isOverBudget ? (
             <>
-              <AlertCircle size={14} aria-hidden="true" />
+              <AlertCircle size={13} aria-hidden="true" />
               <span>Over Budget (+₹{varianceAmount} Cr / +{variancePercent}%)</span>
             </>
           ) : (
             <>
-              <CheckCircle2 size={14} aria-hidden="true" />
-              <span>Within Planned Budget Trajectory</span>
+              <CheckCircle2 size={13} aria-hidden="true" />
+              <span>Within Planned Trajectory</span>
             </>
           )}
         </div>
       </div>
 
-      {/* SVG Chart Visualization */}
-      <div className="chart-svg-wrapper">
+      {/* Scaled-down SVG Chart Container with direct Canvas Tooltip */}
+      <div 
+        className="chart-svg-container compact-svg-container"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      >
         <svg
+          ref={svgRef}
           viewBox={`0 0 ${width} ${height}`}
-          className="budget-svg"
+          className="budget-svg-element"
           preserveAspectRatio="xMidYMid meet"
           aria-hidden="true"
         >
           <defs>
             {/* Gradient fill under actual expenditure line */}
-            <linearGradient id="actualFillGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={isOverBudget ? "#ef4444" : "#10b981"} stopOpacity="0.28" />
-              <stop offset="100%" stopColor={isOverBudget ? "#ef4444" : "#10b981"} stopOpacity="0.0" />
+            <linearGradient id="actualCompactGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={isOverBudget ? "#ef4444" : "#22c55e"} stopOpacity="0.25" />
+              <stop offset="100%" stopColor={isOverBudget ? "#ef4444" : "#22c55e"} stopOpacity="0.0" />
             </linearGradient>
 
-            {/* Subtle grid line pattern */}
-            <pattern id="chartGrid" width="40" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--border-faint)" strokeWidth="1" />
+            {/* Subtle grid pattern */}
+            <pattern id="compactGrid" width="36" height="36" patternUnits="userSpaceOnUse">
+              <path d="M 36 0 L 0 0 0 36" fill="none" stroke="var(--border-color)" strokeWidth="0.75" strokeDasharray="2 2" opacity="0.4" />
             </pattern>
           </defs>
 
           {/* Grid Background */}
-          <rect x={padding.left} y={padding.top} width={graphWidth} height={graphHeight} fill="url(#chartGrid)" />
+          <rect x={padding.left} y={padding.top} width={graphWidth} height={graphHeight} fill="url(#compactGrid)" />
 
           {/* Horizontal Y-Axis Reference Lines */}
-          {[0, 0.25, 0.5, 0.75, 1].map((r) => {
+          {[0, 0.33, 0.66, 1].map((r) => {
             const val = Math.round(maxBudget * r);
             const y = getY(val);
             return (
-              <g key={r} className="grid-line-group">
+              <g key={r}>
                 <line
                   x1={padding.left}
                   y1={y}
                   x2={width - padding.right}
                   y2={y}
-                  stroke="var(--border-faint)"
-                  strokeDasharray="3 3"
+                  className="grid-line"
                 />
                 <text
-                  x={padding.left - 10}
-                  y={y + 4}
+                  x={padding.left - 8}
+                  y={y + 3.5}
                   textAnchor="end"
-                  className="axis-tick-text"
+                  className="axis-label"
                 >
-                  ₹{val.toLocaleString()} Cr
+                  ₹{val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val} Cr
                 </text>
               </g>
             );
           })}
 
-          {/* Vertical Current Time Marker */}
+          {/* Vertical Current Time Marker Line */}
           <line
             x1={actualPoint.x}
             y1={padding.top}
             x2={actualPoint.x}
             y2={height - padding.bottom}
-            stroke="var(--text-muted)"
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
-            opacity="0.6"
+            className="today-line"
           />
           <text
             x={actualPoint.x}
-            y={padding.top - 10}
-            textAnchor="middle"
-            className="current-time-label"
+            y={padding.top - 7}
+            className="today-tag"
           >
-            Today ({timelineProgressPercent}% timeline)
+            Today ({timelineProgressPercent}%)
           </text>
 
-          {/* IDEAL / PLANNED PATH (Dashed line) */}
+          {/* IDEAL / PLANNED S-CURVE (Dashed line) */}
           <path
             d={idealPathD}
             fill="none"
-            stroke="var(--text-muted)"
-            strokeWidth="2.5"
-            strokeDasharray="6 4"
-            className="ideal-path"
+            className="s-curve-line"
           />
 
           {/* ACTUAL EXPENDITURE PATH (Filled Area + Solid Line) */}
           <path
             d={`${actualPathD} L ${actualPoint.x} ${height - padding.bottom} L ${padding.left} ${height - padding.bottom} Z`}
-            fill="url(#actualFillGrad)"
+            fill="url(#actualCompactGrad)"
           />
           <path
             d={actualPathD}
             fill="none"
-            stroke={isOverBudget ? "#ef4444" : "#10b981"}
-            strokeWidth="3.5"
-            className="actual-path"
+            className={`actual-line ${isOverBudget ? "over-budget" : "under-budget"}`}
           />
 
-          {/* Interactive Milestone Points */}
-          {chartPoints.map((pt, idx) => (
-            <g
-              key={idx}
-              className="chart-node-group"
-              onMouseEnter={() => setHoveredPoint(pt)}
-              onMouseLeave={() => setHoveredPoint(null)}
-            >
-              <circle
-                cx={pt.cx}
-                cy={pt.cy}
-                r={pt.isCurrent ? 7 : 5}
-                fill={pt.isCurrent ? (isOverBudget ? "#ef4444" : "#10b981") : "var(--bg-elevated)"}
-                stroke={pt.isCurrent ? "#ffffff" : "var(--text-secondary)"}
-                strokeWidth="2.5"
-                style={{ cursor: "pointer", transition: "transform 0.15s" }}
+          {/* Current Actual Milestone Node */}
+          <circle
+            cx={actualPoint.x}
+            cy={actualPoint.y}
+            r={6}
+            className={`actual-marker-ring ${isOverBudget ? "over-budget" : "under-budget"}`}
+          />
+          <circle
+            cx={actualPoint.x}
+            cy={actualPoint.y}
+            r={3}
+            className="actual-marker-center"
+          />
+
+          {/* Interactive Hover Crosshair & Dots right on the Graph */}
+          {hoverData && (
+            <g className="chart-hover-elements" pointerEvents="none">
+              {/* Vertical crosshair tracker */}
+              <line
+                x1={hoverData.svgX}
+                y1={padding.top}
+                x2={hoverData.svgX}
+                y2={height - padding.bottom}
+                stroke="var(--text-primary)"
+                strokeWidth="1.5"
+                strokeDasharray="2 2"
+                opacity="0.8"
               />
+
+              {/* Point on Planned Curve */}
+              <circle
+                cx={hoverData.svgX}
+                cy={hoverData.svgYPlanned}
+                r={4}
+                fill="#94a3b8"
+                stroke="#ffffff"
+                strokeWidth="1.5"
+              />
+
+              {/* Point on Actual Curve (if not future) */}
+              {hoverData.svgYActual !== null && (
+                <circle
+                  cx={hoverData.svgX}
+                  cy={hoverData.svgYActual}
+                  r={5}
+                  fill={hoverData.isPointOver ? "#ef4444" : "#22c55e"}
+                  stroke="#ffffff"
+                  strokeWidth="2"
+                />
+              )}
             </g>
-          ))}
+          )}
 
           {/* X-Axis Baseline */}
           <line
@@ -274,78 +320,75 @@ export const BudgetTimeChart = ({ project }) => {
             y1={height - padding.bottom}
             x2={width - padding.right}
             y2={height - padding.bottom}
-            stroke="var(--border-strong)"
-            strokeWidth="1.5"
+            className="axis-baseline"
           />
 
           {/* X-Axis Date Labels */}
-          <text x={padding.left} y={height - 15} textAnchor="start" className="axis-tick-text">
+          <text x={padding.left} y={height - 12} textAnchor="start" className="axis-label">
             Start: {startDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
           </text>
-          <text x={width - padding.right} y={height - 15} textAnchor="end" className="axis-tick-text">
+          <text x={width - padding.right} y={height - 12} textAnchor="end" className="axis-label">
             Target: {anticipatedDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
           </text>
         </svg>
 
-        {/* Hover Tooltip */}
-        {hoveredPoint && (
+        {/* DETAILS DISPLAYED DIRECTLY ON THE GRAPH ITSELF */}
+        {hoverData && (
           <div
-            className="chart-tooltip"
+            className="graph-embedded-tooltip"
             style={{
-              left: `${(hoveredPoint.cx / width) * 100}%`,
-              top: `${(hoveredPoint.cy / height) * 100}%`
+              left: `${hoverData.clientXPercent}%`,
+              top: `${Math.min(hoverData.clientYPercent, 62)}%`,
+              transform: `translate(${hoverData.clientXPercent > 62 ? "-105%" : "8%"}, -50%)`
             }}
           >
-            <div className="tooltip-title">{hoveredPoint.label}</div>
-            <div className="tooltip-row">
-              <span>Date:</span> <strong>{hoveredPoint.date}</strong>
+            <div className="tooltip-head">
+              <span className="tooltip-date">{hoverData.dateStr}</span>
+              <span className="tooltip-percent">{hoverData.percent}% Timeline</span>
             </div>
-            {hoveredPoint.planned !== null && (
+
+            <div className="tooltip-body">
               <div className="tooltip-row">
-                <span>Planned Spending:</span> <strong>₹{hoveredPoint.planned?.toLocaleString()} Cr</strong>
+                <span className="tooltip-label planned-label">Planned Baseline:</span>
+                <span className="tooltip-val">₹{hoverData.plannedVal.toLocaleString()} Cr</span>
               </div>
-            )}
-            {hoveredPoint.actual !== null && (
-              <div className="tooltip-row">
-                <span>Actual Cumulative:</span> <strong>₹{hoveredPoint.actual?.toLocaleString()} Cr</strong>
-              </div>
-            )}
-            {hoveredPoint.isCurrent && (
-              <>
-                <div className="tooltip-row">
-                  <span>Timeline Elapsed:</span> <strong>{timelineProgressPercent}%</strong>
+
+              {hoverData.actualVal !== null ? (
+                <>
+                  <div className="tooltip-row">
+                    <span className="tooltip-label actual-label">Actual Expenditure:</span>
+                    <span className="tooltip-val font-bold">₹{hoverData.actualVal.toLocaleString()} Cr</span>
+                  </div>
+                  <div className="tooltip-row variance-row">
+                    <span className="tooltip-label">Variance:</span>
+                    <span className={`tooltip-val ${hoverData.isPointOver ? "text-danger" : "text-success"}`}>
+                      {hoverData.isPointOver ? `+₹${hoverData.pointVariance} Cr (Over)` : `₹${hoverData.pointVariance} Cr (Under)`}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="tooltip-row future-row">
+                  <span className="tooltip-label">Projected Horizon:</span>
+                  <span className="tooltip-val">Target: ₹{revisedCost.toLocaleString()} Cr</span>
                 </div>
-                <div className="tooltip-row">
-                  <span>Physical Progress:</span> <strong>{physicalProgress}%</strong>
-                </div>
-              </>
-            )}
+              )}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Chart Legend & Explanatory Metadata */}
-      <div className="chart-legend-bar">
-        <div className="legend-items">
-          <div className="legend-item">
-            <span className="legend-line ideal" />
-            <span>Ideal / Planned Trajectory (Target: ₹{revisedCost.toLocaleString()} Cr)</span>
-          </div>
-          <div className="legend-item">
-            <span className={`legend-line ${isOverBudget ? "actual-over" : "actual-under"}`} />
-            <span>
-              Current Actual State (₹{actualExpenditure.toLocaleString()} Cr • {financialProgressPercent}%)
-            </span>
-          </div>
+      {/* Compact Chart Legend */}
+      <div className="chart-legend-row compact-legend">
+        <div className="legend-item">
+          <span className="legend-line planned" />
+          <span>Planned S-Curve (Target: ₹{revisedCost.toLocaleString()} Cr)</span>
         </div>
-
-        <div className="legend-status-note">
-          <Info size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
-          <span>
-            {isOverBudget
-              ? "Actual expenditure currently outpaces the ideal baseline curve."
-              : "Expenditure is disciplined within the scheduled baseline envelope."}
-          </span>
+        <div className="legend-item">
+          <span className={`legend-line actual ${isOverBudget ? "over-budget" : "under-budget"}`} />
+          <span>Actual Spend (₹{actualExpenditure.toLocaleString()} Cr • {financialProgressPercent}%)</span>
+        </div>
+        <div className="legend-item cursor-hint">
+          <span>• Hover on graph for timeline details</span>
         </div>
       </div>
     </div>
