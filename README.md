@@ -1,16 +1,27 @@
-# React + Vite
+# Infrastructure Project Monitoring Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+An AI-powered dashboard for monitoring infrastructure projects and identifying potential **cost overruns, time delays, and implementation risks**.
 
-Currently, two official plugins are available:
+## Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Project search by **Project Code, State, and Ministry**
+- Active project and risk-level statistics
+- Top 5 **High, Medium, and Low Risk** projects
+- **Budget vs Time** analysis
+- Physical project progress visualization
+- AI-based risk scoring and early-warning indicators
+- Project details, implementation challenges, and alerts
+- Light/Dark mode and accessibility controls
+- Dedicated routed pages for individual projects
 
-## React Compiler
+## Objective
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Transform traditional **descriptive project monitoring** into **predictive and prescriptive decision support**, helping authorities identify risks early and prioritize timely interventions.
 
-## Expanding the Oxlint configuration
+## Project Context
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+Developed as an **SIH prototype for AI-powered Infrastructure Monitoring**, inspired by the PAIMANA/OCMS project-monitoring ecosystem.
+
+## Workflow
+
+**Search → Analyse → Predict → Prioritise → Act**
