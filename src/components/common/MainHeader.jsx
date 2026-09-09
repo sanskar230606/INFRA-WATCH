@@ -1,16 +1,29 @@
 import React, { useState } from "react";
 import { APP_CONFIG } from "../../config/branding";
-import { ShieldCheck, Menu, X, ArrowUpRight } from "lucide-react";
+import { ShieldCheck, Menu, X } from "lucide-react";
 
-export const MainHeader = () => {
-  const [activeNav, setActiveNav] = useState("Home");
+export const MainHeader = ({ activeNav = "Search", onNavigate }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
+  const handleNavClick = (e, link) => {
+    e.preventDefault();
+    setMobileMenuOpen(false);
+
+    if (onNavigate) {
+      onNavigate(link);
+    } else if (link.targetId) {
+      const el = document.getElementById(link.targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  };
+
   return (
     <header className="main-header" role="banner">
-      {/* LEFT SIDE — NAVIGATION */}
+      {/* LEFT SIDE — NAVIGATION (Home | Search | Stats | About | Contact Us) */}
       <nav 
         className={`header-nav ${mobileMenuOpen ? "mobile-open" : ""}`}
         aria-label="Main Navigation"
@@ -20,13 +33,9 @@ export const MainHeader = () => {
           return (
             <a
               key={link.label}
-              href={link.href}
+              href={`#${link.targetId}`}
               className={`nav-link ${isActive ? "active" : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveNav(link.label);
-                setMobileMenuOpen(false);
-              }}
+              onClick={(e) => handleNavClick(e, link)}
               aria-current={isActive ? "page" : undefined}
             >
               {isActive && <span className="nav-link-dot" aria-hidden="true"></span>}

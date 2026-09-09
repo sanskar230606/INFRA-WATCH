@@ -4,9 +4,8 @@ import { MainHeader } from "../common/MainHeader";
 import { HeroSection } from "./HeroSection";
 import { ProjectSearchPanel } from "./ProjectSearchPanel";
 import { APP_CONFIG } from "../../config/branding";
-import { Cpu, Database, CheckCircle2 } from "lucide-react";
 
-export const HomeSectionOne = () => {
+export const HomeSectionOne = ({ activeNav = "Search", onNavigate }) => {
   return (
     <section 
       id="home-section-1"
@@ -16,11 +15,11 @@ export const HomeSectionOne = () => {
       {/* Subtle Data / Infrastructure Grid Pattern */}
       <div className="bg-grid-overlay" aria-hidden="true" />
 
-      {/* TOP: Accessibility / User Settings Bar */}
-      <AccessibilityBar />
-
-      {/* SUB-TOP: Main Navigation Header with Centralized Branding */}
-      <MainHeader />
+      {/* STICKY TOP WRAPPER: Accessibility Bar + Main Navigation */}
+      <div className="sticky-top-bar">
+        <AccessibilityBar />
+        <MainHeader activeNav={activeNav} onNavigate={onNavigate} />
+      </div>
 
       {/* CENTER: Hero Messaging + Glassmorphism Project Search Panel */}
       <main className="hero-container" role="main">

@@ -19,16 +19,22 @@ export const APP_CONFIG = {
   heroDescription:
     "An AI-powered infrastructure monitoring platform that analyses project data to predict cost overruns, schedule delays and implementation risks, enabling timely and evidence-based intervention.",
 
+  // Section 2 Messaging
+  section2Title: "Infrastructure Risk Overview",
+  section2Subtitle: "Prioritising projects based on predicted implementation risk",
+
   // Search Panel Guidance
   searchPlaceholderCode: "Enter Project Code (e.g. MOR-DFCCIL-2016-01)",
   searchPlaceholderState: "Select State",
   searchPlaceholderMinistry: "Select Ministry / Department",
 
-  // Navigation Links
+  // Navigation Links (Home | Search | Stats | About | Contact Us)
   navLinks: [
-    { label: "Home", href: "#home", active: true },
-    { label: "About", href: "#about", active: false },
-    { label: "Contact Us", href: "#contact", active: false },
+    { label: "Home", targetId: "home-section-1" },
+    { label: "Search", targetId: "home-section-1" },
+    { label: "Stats", targetId: "project-risk-overview" },
+    { label: "About", targetId: "about" },
+    { label: "Contact Us", targetId: "contact" }
   ],
 
   // Platform capabilities highlight
