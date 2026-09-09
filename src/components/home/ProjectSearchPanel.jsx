@@ -211,7 +211,7 @@ export const ProjectSearchPanel = () => {
         <div className="search-meta-footer">
           <div className="sample-pills">
             <span className="sample-label">Quick Lookup:</span>
-            {sampleCodes.slice(0, 3).map((item) => (
+            {sampleCodes.slice(0, 4).map((item) => (
               <button
                 key={item.code}
                 type="button"
@@ -219,7 +219,7 @@ export const ProjectSearchPanel = () => {
                 onClick={() => handleSampleClick(item.code)}
                 title={item.label}
               >
-                {item.code.split("-")[1] || item.code}
+                {item.code}
               </button>
             ))}
           </div>

@@ -116,11 +116,12 @@ export class ProjectSearchService {
    */
   static getSampleCodes() {
     return [
-      { code: "MOR-DFCCIL-2016-01", label: "Eastern Dedicated Freight Corridor" },
-      { code: "NHAI-DME-2018-04", label: "Delhi - Mumbai Expressway" },
-      { code: "MOR-USBRL-2002-09", label: "USBRL Railway Project" },
-      { code: "MOP-SLHEP-2005-02", label: "Subansiri Hydroelectric" },
-      { code: "MOCA-NIA-2020-05", label: "Jewar International Airport" }
+      { code: "612786", label: "Kadapa Airport Terminal (AAI)" },
+      { code: "701107", label: "Vijayawada Airport Integrated Terminal (AAI)" },
+      { code: "701126", label: "Dholera Greenfield Airport (DIACL)" },
+      { code: "400424", label: "Gevra OC Expansion 70 MTY (SECL)" },
+      { code: "602182", label: "Dibang Multipurpose Hydroelectric (NHPC)" },
+      { code: "400416", label: "Shivpur-Kathautia Rail Line (ECR)" }
     ];
   }
 }
