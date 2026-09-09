@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from "react";
+import React, { useMemo } from "react";
 import { APP_CONFIG } from "../../config/branding";
 import { RiskSummaryPanel } from "./RiskSummaryPanel";
 import { RiskProjectTable } from "./RiskProjectTable";
-import { ProjectPreviewModal } from "../home/ProjectPreviewModal";
+import { useRouter } from "../../context/RouterContext";
 import { 
   getRiskKpiStats, 
   getTopProjectsByRisk 
@@ -10,7 +10,7 @@ import {
 import { BarChart3 } from "lucide-react";
 
 export const HomeSectionTwo = () => {
-  const [selectedProject, setSelectedProject] = useState(null);
+  const { navigate } = useRouter();
 
   // Compute live KPI metrics from active dataset
   const kpiStats = useMemo(() => getRiskKpiStats(), []);
@@ -19,6 +19,12 @@ export const HomeSectionTwo = () => {
   const highRiskProjects = useMemo(() => getTopProjectsByRisk("High", 5), []);
   const mediumRiskProjects = useMemo(() => getTopProjectsByRisk("Medium", 5), []);
   const lowRiskProjects = useMemo(() => getTopProjectsByRisk("Low", 5), []);
+
+  const handleSelectProject = (project) => {
+    if (project?.projectCode) {
+      navigate(`/projects/${project.projectCode}`);
+    }
+  };
 
   return (
     <section
@@ -56,7 +62,7 @@ export const HomeSectionTwo = () => {
               subtitle="Top 5 projects requiring immediate attention"
               category="High"
               projects={highRiskProjects}
-              onSelectProject={setSelectedProject}
+              onSelectProject={handleSelectProject}
             />
 
             {/* 2. MEDIUM RISK TABLE */}
@@ -65,7 +71,7 @@ export const HomeSectionTwo = () => {
               subtitle="Top 5 projects requiring monitoring"
               category="Medium"
               projects={mediumRiskProjects}
-              onSelectProject={setSelectedProject}
+              onSelectProject={handleSelectProject}
             />
 
             {/* 3. LOW RISK TABLE */}
@@ -74,19 +80,11 @@ export const HomeSectionTwo = () => {
               subtitle="Top 5 projects with comparatively lower risk"
               category="Low"
               projects={lowRiskProjects}
-              onSelectProject={setSelectedProject}
+              onSelectProject={handleSelectProject}
             />
           </div>
         </div>
       </div>
-
-      {/* PROJECT PREDICTIVE PREVIEW MODAL */}
-      {selectedProject && (
-        <ProjectPreviewModal
-          project={selectedProject}
-          onClose={() => setSelectedProject(null)}
-        />
-      )}
     </section>
   );
 };

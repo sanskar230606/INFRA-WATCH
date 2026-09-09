@@ -11,9 +11,11 @@ import {
   Sliders
 } from "lucide-react";
 import { ProjectSearchService } from "../../services/projectSearchService";
-import { ProjectPreviewModal } from "./ProjectPreviewModal";
+import { useRouter } from "../../context/RouterContext";
 
 export const ProjectSearchPanel = () => {
+  const { navigate } = useRouter();
+
   // 3 Search Parameters
   const [projectCode, setProjectCode] = useState("");
   const [state, setState] = useState("");
@@ -24,7 +26,6 @@ export const ProjectSearchPanel = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [searchMeta, setSearchMeta] = useState(null);
   const [validationMessage, setValidationMessage] = useState("");
-  const [selectedProject, setSelectedProject] = useState(null);
 
   // Dynamic filter lists from dataset
   const filterOptions = useMemo(() => ProjectSearchService.getFilterOptions(), []);
@@ -257,12 +258,12 @@ export const ProjectSearchPanel = () => {
                 <div
                   key={project.projectCode}
                   className="result-item-card"
-                  onClick={() => setSelectedProject(project)}
+                  onClick={() => navigate(`/projects/${project.projectCode}`)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
-                      setSelectedProject(project);
+                      navigate(`/projects/${project.projectCode}`);
                     }
                   }}
                   aria-label={`View analysis for ${project.name}`}
@@ -294,14 +295,6 @@ export const ProjectSearchPanel = () => {
             </div>
           )}
         </div>
-      )}
-
-      {/* PROJECT PREDICTIVE PREVIEW MODAL */}
-      {selectedProject && (
-        <ProjectPreviewModal
-          project={selectedProject}
-          onClose={() => setSelectedProject(null)}
-        />
       )}
     </div>
   );
