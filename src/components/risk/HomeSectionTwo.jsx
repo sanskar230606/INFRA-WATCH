@@ -7,7 +7,7 @@ import {
   getRiskKpiStats, 
   getTopProjectsByRisk 
 } from "../../data/mockProjects";
-import { ShieldAlert, BarChart3, AlertOctagon } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 
 export const HomeSectionTwo = () => {
   const [selectedProject, setSelectedProject] = useState(null);
@@ -24,18 +24,18 @@ export const HomeSectionTwo = () => {
     <section
       id="project-risk-overview"
       className="home-section-2"
-      aria-label="Section 2: Project Risk Overview"
+      aria-label="Infrastructure Risk Overview"
     >
       {/* Subtle Engineering Grid Motif continuity */}
       <div className="bg-grid-overlay" aria-hidden="true" />
 
       <div className="section-2-container">
-        {/* SECTION HEADER & TITLE */}
+        {/* SECTION HEADER & TITLE (Clean header, no artificial Section 2 numbering) */}
         <header className="section-2-header">
           <div className="section-title-wrap">
             <div className="section-tag-pill">
               <BarChart3 size={12} aria-hidden="true" />
-              <span>MoSPI PORTFOLIO INTELLIGENCE • SECTION 2</span>
+              <span>{APP_CONFIG.section2Tag}</span>
             </div>
             <h2 className="section-2-title">{APP_CONFIG.section2Title}</h2>
             <p className="section-2-subtitle">{APP_CONFIG.section2Subtitle}</p>
@@ -47,7 +47,7 @@ export const HomeSectionTwo = () => {
           <RiskSummaryPanel stats={kpiStats} />
         </div>
 
-        {/* BOTTOM AREA (~80% HEIGHT): 3 TOP RISK TABLES */}
+        {/* BOTTOM AREA (~80% HEIGHT): 3 TOP RISK TABLES WITH INCREASED BREATHING ROOM */}
         <div className="section-2-bottom-area">
           <div className="risk-tables-grid">
             {/* 1. HIGH RISK TABLE */}
