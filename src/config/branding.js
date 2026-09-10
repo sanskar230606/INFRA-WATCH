@@ -157,7 +157,7 @@ export const APP_CONFIG = {
     connect: [
       { label: "LinkedIn", href: "https://www.linkedin.com" },
       { label: "X / Twitter", href: "https://x.com" },
-      { label: "GitHub", href: "https://github.com" },
+      { label: "GitHub", href: "https://github.com/sanskar230606/INFRA-WATCH" },
       { label: "Email", href: "mailto:contact@mospi.gov.in" },
       { label: "MoSPI Portal", href: "https://www.mospi.gov.in" }
     ]
