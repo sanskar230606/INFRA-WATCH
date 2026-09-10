@@ -38,8 +38,14 @@ export const MainHeader = ({ activeNav = "Search", onNavigate }) => {
               onClick={(e) => handleNavClick(e, link)}
               aria-current={isActive ? "page" : undefined}
             >
-              {isActive && <span className="nav-link-dot" aria-hidden="true"></span>}
-              {link.label}
+              {/* Dynamic Animated Dual Border (converges from opposite sides) */}
+              <svg className="nav-border-svg" aria-hidden="true">
+                <rect className="border-line line-1" pathLength="100" />
+                <rect className="border-line line-2" pathLength="100" />
+              </svg>
+
+              {isActive && <span className="nav-link-dot" aria-hidden="true" />}
+              <span className="nav-link-label">{link.label}</span>
             </a>
           );
         })}
