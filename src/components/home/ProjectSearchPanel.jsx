@@ -27,9 +27,24 @@ export const ProjectSearchPanel = () => {
   const [searchMeta, setSearchMeta] = useState(null);
   const [validationMessage, setValidationMessage] = useState("");
 
-  // Dynamic filter lists from dataset
-  const filterOptions = useMemo(() => ProjectSearchService.getFilterOptions(), []);
+  // Dynamic filter lists from dataset with live API update support
+  const [filterOptions, setFilterOptions] = useState(() => ProjectSearchService.getFilterOptions());
   const sampleCodes = useMemo(() => ProjectSearchService.getSampleCodes(), []);
+
+  // Refresh filter options if backend has additional dynamic entries
+  React.useEffect(() => {
+    let isMounted = true;
+    if (typeof ProjectSearchService.fetchFilterOptionsAsync === "function") {
+      ProjectSearchService.fetchFilterOptionsAsync().then((opts) => {
+        if (isMounted && opts && opts.states && opts.ministries) {
+          setFilterOptions(opts);
+        }
+      }).catch(() => {});
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Execute Search
   const handleSearch = async (e) => {
@@ -143,7 +158,7 @@ export const ProjectSearchPanel = () => {
                   aria-label="Filter by State"
                 >
                   <option value="">Select State</option>
-                  {filterOptions.states.map((s) => (
+                  {(filterOptions?.states || []).map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
@@ -170,7 +185,7 @@ export const ProjectSearchPanel = () => {
                   aria-label="Filter by Ministry or Department"
                 >
                   <option value="">Select Ministry / Department</option>
-                  {filterOptions.ministries.map((m) => (
+                  {(filterOptions?.ministries || []).map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>

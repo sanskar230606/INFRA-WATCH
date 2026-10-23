@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { APP_CONFIG } from "../../config/branding";
 import { RiskSummaryPanel } from "./RiskSummaryPanel";
 import { RiskProjectTable } from "./RiskProjectTable";
@@ -7,18 +7,39 @@ import {
   getRiskKpiStats, 
   getTopProjectsByRisk 
 } from "../../data/mockProjects";
+import { fetchRiskKpiStats, fetchTopProjectsByRisk } from "../../services/api";
 import { BarChart3 } from "lucide-react";
 
 export const HomeSectionTwo = () => {
   const { navigate } = useRouter();
 
-  // Compute live KPI metrics from active dataset
-  const kpiStats = useMemo(() => getRiskKpiStats(), []);
+  // State for KPI stats and risk-ranked projects
+  const [kpiStats, setKpiStats] = useState(() => getRiskKpiStats());
+  const [highRiskProjects, setHighRiskProjects] = useState(() => getTopProjectsByRisk("High", 5));
+  const [mediumRiskProjects, setMediumRiskProjects] = useState(() => getTopProjectsByRisk("Medium", 5));
+  const [lowRiskProjects, setLowRiskProjects] = useState(() => getTopProjectsByRisk("Low", 5));
 
-  // Compute Top 5 ranked projects for each risk category
-  const highRiskProjects = useMemo(() => getTopProjectsByRisk("High", 5), []);
-  const mediumRiskProjects = useMemo(() => getTopProjectsByRisk("Medium", 5), []);
-  const lowRiskProjects = useMemo(() => getTopProjectsByRisk("Low", 5), []);
+  // Fetch from backend API on mount, fall back to static data on error
+  useEffect(() => {
+    const loadFromApi = async () => {
+      try {
+        const [stats, high, medium, low] = await Promise.all([
+          fetchRiskKpiStats(),
+          fetchTopProjectsByRisk("High", 5),
+          fetchTopProjectsByRisk("Medium", 5),
+          fetchTopProjectsByRisk("Low", 5),
+        ]);
+        setKpiStats(stats);
+        setHighRiskProjects(high);
+        setMediumRiskProjects(medium);
+        setLowRiskProjects(low);
+      } catch {
+        // Keep the static fallback data already set in initial state
+        console.warn("⚠️ Using static fallback data for risk overview");
+      }
+    };
+    loadFromApi();
+  }, []);
 
   const handleSelectProject = (project) => {
     if (project?.projectCode) {

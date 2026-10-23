@@ -1,19 +1,19 @@
 /**
  * Project Search & Query Service
- * Encapsulates multi-parameter search logic across:
- * 1. Project Code (partial match, case-insensitive)
- * 2. State (exact or contained in multi-state infrastructure alignments)
- * 3. Ministry / Department (exact or partial match)
  * 
- * Modular architecture: Can be swapped with an Axios/Fetch call to a MoSPI API
- * or ML inference backend without altering UI components.
+ * This service fetches data from the InfraWatch Express Backend API.
+ * Falls back to local static data (mockProjects) if the backend is unreachable.
+ * 
+ * Modular architecture: Seamless swap between local static data and live API.
  */
 
 import { MOCK_PROJECTS, getDistinctStates, getDistinctMinistries } from "../data/mockProjects";
+import { searchProjects as apiSearch, fetchProjectByCode, fetchFilterOptions } from "./api";
 
 export class ProjectSearchService {
   /**
    * Search projects based on any combination of parameters.
+   * Tries the backend API first, falls back to local static search.
    * @param {Object} params
    * @param {string} [params.projectCode]
    * @param {string} [params.state]
@@ -21,12 +21,26 @@ export class ProjectSearchService {
    * @returns {Promise<{ results: Array, total: number, activeFilters: Object, queryTimeMs: number }>}
    */
   static async searchProjects({ projectCode = "", state = "", ministry = "" } = {}) {
+    try {
+      // Try backend API first
+      const apiResult = await apiSearch({ projectCode, state, ministry });
+      return apiResult;
+    } catch (error) {
+      console.warn("⚠️ Backend API unreachable, falling back to static data");
+      // Fallback to local static search
+      return ProjectSearchService._localSearch({ projectCode, state, ministry });
+    }
+  }
+
+  /**
+   * Local static search fallback (original logic)
+   */
+  static _localSearch({ projectCode = "", state = "", ministry = "" } = {}) {
     const startTime = performance.now();
     const cleanCode = projectCode.trim().toLowerCase();
     const cleanState = state.trim().toLowerCase();
     const cleanMinistry = ministry.trim().toLowerCase();
 
-    // Check if at least one parameter is supplied
     const hasCode = cleanCode.length > 0;
     const hasState = cleanState.length > 0;
     const hasMinistry = cleanMinistry.length > 0;
@@ -46,14 +60,12 @@ export class ProjectSearchService {
       let matchesState = true;
       let matchesMinistry = true;
 
-      // Match project code or partial project code or project name
       if (hasCode) {
         const codeMatch = project.projectCode.toLowerCase().includes(cleanCode);
         const nameMatch = project.name.toLowerCase().includes(cleanCode);
         matchesCode = codeMatch || nameMatch;
       }
 
-      // Match primary state or multi-state alignment
       if (hasState) {
         const primaryStateMatch = project.state.toLowerCase() === cleanState;
         const allStatesMatch =
@@ -62,7 +74,6 @@ export class ProjectSearchService {
         matchesState = primaryStateMatch || allStatesMatch;
       }
 
-      // Match ministry / department
       if (hasMinistry) {
         matchesMinistry = project.ministry.toLowerCase() === cleanMinistry;
       }
@@ -86,11 +97,21 @@ export class ProjectSearchService {
   }
 
   /**
-   * Direct lookup by exact or primary project code
+   * Direct lookup by exact or primary project code.
+   * Tries backend API first, falls back to local data.
    * @param {string} code
    */
   static async getProjectByCode(code) {
     if (!code) return null;
+
+    try {
+      const project = await fetchProjectByCode(code);
+      if (project) return project;
+    } catch {
+      // Fall through to local search
+    }
+
+    // Fallback to local static data
     const clean = code.trim().toLowerCase();
     return (
       MOCK_PROJECTS.find(
@@ -102,13 +123,33 @@ export class ProjectSearchService {
   }
 
   /**
-   * Fetch all available filter options from the dataset
+   * Get default/instant filter options from local static dataset.
+   * Guarantees synchronous return of { states: [...], ministries: [...] }
    */
   static getFilterOptions() {
     return {
       states: getDistinctStates(),
       ministries: getDistinctMinistries()
     };
+  }
+
+  /**
+   * Fetch live distinct filter options from backend API if available,
+   * falling back to local static values.
+   */
+  static async fetchFilterOptionsAsync() {
+    try {
+      const options = await fetchFilterOptions();
+      if (options && options.states && options.states.length > 0) {
+        return {
+          states: options.states,
+          ministries: options.ministries
+        };
+      }
+    } catch {
+      // Fallback
+    }
+    return ProjectSearchService.getFilterOptions();
   }
 
   /**
@@ -121,7 +162,9 @@ export class ProjectSearchService {
       { code: "701126", label: "Dholera Greenfield Airport (DIACL)" },
       { code: "400424", label: "Gevra OC Expansion 70 MTY (SECL)" },
       { code: "602182", label: "Dibang Multipurpose Hydroelectric (NHPC)" },
-      { code: "400416", label: "Shivpur-Kathautia Rail Line (ECR)" }
+      { code: "400416", label: "Shivpur-Kathautia Rail Line (ECR)" },
+      { code: "810601", label: "Mumbai Metro Line 3 Aqua Line (MMRCL)" },
+      { code: "910702", label: "Polavaram Irrigation Dam (PPA)" }
     ];
   }
 }

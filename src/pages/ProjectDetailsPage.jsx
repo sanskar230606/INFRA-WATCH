@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "../context/RouterContext";
 import { MOCK_PROJECTS } from "../data/mockProjects";
+import { fetchProjectByCode } from "../services/api";
 import { BudgetTimeChart } from "../components/project/BudgetTimeChart";
 import { ProjectProgressRing } from "../components/project/ProjectProgressRing";
 import { ProjectHealthSummary } from "../components/project/ProjectHealthSummary";
@@ -28,15 +29,51 @@ import {
 export const ProjectDetailsPage = () => {
   const { projectCodeParam, goBack, navigate } = useRouter();
 
+  const [project, setProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   // Scroll to top on mount or param change
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [projectCodeParam]);
 
-  // Find project in the dataset
-  const project = MOCK_PROJECTS.find(
-    (p) => String(p.projectCode).trim() === String(projectCodeParam).trim()
-  );
+  // Fetch project from API, fallback to static data
+  useEffect(() => {
+    let cancelled = false;
+    const loadProject = async () => {
+      setLoading(true);
+      try {
+        const apiProject = await fetchProjectByCode(projectCodeParam);
+        if (!cancelled && apiProject) {
+          setProject(apiProject);
+          setLoading(false);
+          return;
+        }
+      } catch {
+        // Fall through to static lookup
+      }
+      // Fallback to static data
+      if (!cancelled) {
+        const staticProject = MOCK_PROJECTS.find(
+          (p) => String(p.projectCode).trim() === String(projectCodeParam).trim()
+        );
+        setProject(staticProject || null);
+        setLoading(false);
+      }
+    };
+    loadProject();
+    return () => { cancelled = true; };
+  }, [projectCodeParam]);
+
+  if (loading) {
+    return (
+      <main className="project-details-page" role="main" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div style={{ textAlign: 'center', color: 'var(--text-secondary, #9ca3af)' }}>
+          <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Loading project...</div>
+        </div>
+      </main>
+    );
+  }
 
   if (!project) {
     return (
