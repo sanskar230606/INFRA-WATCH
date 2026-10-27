@@ -27,6 +27,8 @@ Backend/.env
 Backend/.env.*
 Frontend/.env
 Frontend/.env.*
+!.env.example
+!*/.env.example
 
 # Local overrides
 *.local

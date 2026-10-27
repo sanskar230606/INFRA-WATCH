@@ -4,8 +4,10 @@
  * Replaces the static import from mockProjects.js with live MongoDB data.
  * Falls back to the static MOCK_PROJECTS if the backend is unreachable.
  */
-
-const API_BASE_URL = "/api";
+const rawApiUrl = import.meta.env.VITE_API_URL?.trim();
+const API_BASE_URL = rawApiUrl
+  ? (rawApiUrl.endsWith("/api") ? rawApiUrl : `${rawApiUrl.replace(/\/+$/, "")}/api`)
+  : "/api";
 
 /**
  * Generic fetch wrapper with error handling and timeout

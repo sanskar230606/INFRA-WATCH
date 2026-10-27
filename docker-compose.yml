@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: dockerfile
+    container_name: infrawatch-backend
+    restart: always
+    environment:
+      - PORT=5050
+      - MONGO_URI=${MONGO_URI}
+      - MONGO_URL=${MONGO_URL}
+      - NODE_ENV=production
+      - ALLOWED_ORIGINS=*
+    ports:
+      - "5050:5050"
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: dockerfile
+    container_name: infrawatch-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
